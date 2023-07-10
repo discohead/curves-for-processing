@@ -7,5 +7,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="/Applications/Processing.app/Contents/Java/core/library/core.jar"/>
+	<classpathentry kind="lib" path="/Users/jaredmcfarland/Documents/Processing/libraries/sound/library/sound.jar"/>
 	<classpathentry kind="output" path="resources/code"/>
 </classpath>

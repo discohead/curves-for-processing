@@ -2,3 +2,7 @@ bin
 tmp
 distribution
 Processing/
+*.class
+*.jar
+*.DS_Store
+*.idea/

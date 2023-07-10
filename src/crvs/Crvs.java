@@ -1,19 +1,19 @@
 package crvs;
 
 
-import processing.core.*;
-import java.util.function.DoubleUnaryOperator;
-import java.util.Random;
+import processing.core.PApplet;
+import processing.core.PConstants;
+import processing.core.PVector;
 import java.util.Arrays;
-import java.util.stream.DoubleStream;
 import java.lang.Math;
 
 /**
  * This class provides a set of operations to create and manipulate curves.
  */
 public class Crvs {
-
+	
     PApplet parent;
+    float[] table;
 
     /**
      * Initializes a new instance of the Curves class with a reference to the parent PApplet.
@@ -21,9 +21,20 @@ public class Crvs {
      *
      * @param parent A reference to the parent PApplet instance. This is typically passed in from a sketch 
      *               using the 'this' keyword.
+     * @param table An array of floats to be used as a wavetable by the table() method.
      */
-    public Crvs(PApplet parent) {
+    public Crvs(PApplet parent, float[] table) {
         this.parent = parent;
+        if (table != null) {
+        	this.table = table;
+        } else {
+        	this.table = new float[1];
+        	this.table[0] = 0.0f;
+        }
+    }
+    
+    public Crvs(PApplet parent) {
+    	this(parent, null);
     }
 
     /**
@@ -31,44 +42,8 @@ public class Crvs {
      * @param pos Position value to be clamped.
      * @return Clamped position value.
      */
-    private double clamp(double pos) {
-        return Math.max(0.0, Math.min(1.0, pos));
-    }
-
-    /**
-     * Calculates a position value based on input rate and phase.
-     * @param pos Original position.
-     * @param rate Rate operator to adjust the position.
-     * @param phase Phase operator to adjust the position.
-     * @return Calculated position.
-     */
-    private double calcPos(double pos, DoubleUnaryOperator rate, DoubleUnaryOperator phase) {
-        pos = clamp(pos);
-        if (rate != null) {
-            pos = pos * rate.applyAsDouble(pos);
-        }
-        if (phase != null) {
-            pos = (pos + phase.applyAsDouble(pos)) % 1.0;
-        }
-        return pos;
-    }
-
-    /**
-     * Amplifies and biases the value based on provided amp and bias parameters.
-     * @param value Input value to be amplified and biased.
-     * @param amp Amplifier operator.
-     * @param bias Bias operator.
-     * @param pos Position at which the operation is performed.
-     * @return Biased and amplified value.
-     */
-    private double ampBias(double value, DoubleUnaryOperator amp, DoubleUnaryOperator bias, double pos) {
-        if (amp != null) {
-            value = value * amp.applyAsDouble(pos);
-        }
-        if (bias != null) {
-            value = value + bias.applyAsDouble(pos);
-        }
-        return value;
+    public float clamp(float pos) {
+        return (float) Math.max(0.0, Math.min(1.0, pos));
     }
     
     /**
@@ -77,13 +52,12 @@ public class Crvs {
      * @param pos The position to convert, in the 0-1 range.
      * @return The corresponding radian value in the 0-2π range.
      */
-    public double pos2Rad(double pos) {
+    public float pos2Rad(float pos) {
         pos = clamp(pos);
-        double degrees = pos * 360;
-        return Math.toRadians(degrees); // Java's function to convert degrees to radians
+        float degrees = pos * 360;
+        return (float) Math.toRadians(degrees); // Java's function to convert degrees to radians
     }
-
-
+    
     /**
      * Generates a random number using triangular distribution between a given range.
      * @param low Lower limit of the distribution.
@@ -91,599 +65,575 @@ public class Crvs {
      * @param mode Mode of the distribution.
      * @return A random number generated using the triangular distribution.
      */
-    private double triDistribution(double low, double high, double mode) {
-        double r = parent.random(1f);
-        if (mode == -1) {
-            mode = 0.5;
+    public float triDist(float lo, float hi, float mode) {
+        float F = (mode - lo) / (hi - lo);
+        float rand = parent.random(1f);
+        if (rand < F) {
+            return lo + (float) Math.sqrt(rand * (hi - lo) * (mode - lo));
         } else {
-            double divisor = high - low;
-            if (divisor < 0) divisor = low;
+            return hi - (float) Math.sqrt((1 - rand) * (hi - lo) * (hi - mode));
         }
-        if (r > mode) {
-            r = 1.0 - r;
-            mode = 1.0 - mode;
-            double temp = low;
-            low = high;
-            high = temp;
-        }
-        return low + (high - low) * Math.sqrt(r * mode);
     }
 
     /**
-     * Returns a DoubleUnaryOperator that returns a constant value regardless of input.
+     * Returns a FloatOp that returns a constant value regardless of input.
      * @param value Constant value to be returned.
-     * @return DoubleUnaryOperator that returns a constant value.
+     * @return FloatOp that returns a constant value.
      */
-    public DoubleUnaryOperator c(double value) {
-        return (double pos) -> value;
+    public FloatOp c(float value) {
+        return (float pos) -> value;
+    }
+
+    /**
+     * Returns a FloatOp that always returns 0.0 regardless of the input.
+     *
+     * @return A FloatOp that always returns 0.0.
+     */
+    public FloatOp zero() {
+        return (float pos) -> 0.0f;
+    }
+
+    /**
+     * Returns a FloatOp that always returns 0.25 regardless of the input.
+     *
+     * @return A FloatOp that always returns 0.25.
+     */
+    public FloatOp fourth() {
+        return (float pos) -> 0.25f;
+    }
+
+    /**
+     * Returns a FloatOp that always returns 1/3 regardless of the input.
+     *
+     * @return A FloatOp that always returns 1/3.
+     */
+    public FloatOp third() {
+        return (float pos) -> 1.0f/3.0f;
     }
     
     /**
-     * Returns a DoubleUnaryOperator that always returns 1.0 regardless of the input.
+     * Returns a FloatOp that always returns 0.5 regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns 1.0.
+     * @return A FloatOp that always returns 0.5.
      */
-    public DoubleUnaryOperator one() {
-        return (double pos) -> 1.0;
+    public FloatOp half() {
+        return (float pos) -> 0.5f;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator that always returns 0.0 regardless of the input.
+     * Returns a FloatOp that always returns 1.0 regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns 0.0.
+     * @return A FloatOp that always returns 1.0.
      */
-    public DoubleUnaryOperator zero() {
-        return (double pos) -> 0.0;
+    public FloatOp one() {
+        return (float pos) -> 1.0f;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator that always returns 0.5 regardless of the input.
+     * Returns a FloatOp that always returns 2.0 regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns 0.5.
+     * @return A FloatOp that always returns 2.0.
      */
-    public DoubleUnaryOperator half() {
-        return (double pos) -> 0.5;
+    public FloatOp two() {
+        return (float pos) -> 2.0f;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator that always returns 0.25 regardless of the input.
+     * Returns a FloatOp that always returns 3.0 regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns 0.25.
+     * @return A FloatOp that always returns 3.0.
      */
-    public DoubleUnaryOperator fourth() {
-        return (double pos) -> 0.25;
+    public FloatOp three() {
+        return (float pos) -> 3.0f;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator that always returns 1/3 regardless of the input.
+     * Returns a FloatOp that always returns 4.0 regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns 1/3.
+     * @return A FloatOp that always returns 4.0.
      */
-    public DoubleUnaryOperator third() {
-        return (double pos) -> 1.0/3.0;
+    public FloatOp four() {
+        return (float pos) -> 4.0f;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator that always returns half pi regardless of the input.
+     * Returns a FloatOp that always returns quarter pi regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns half pi.
+     * @return A FloatOp that always returns quarter pi.
      */
-    public DoubleUnaryOperator halfPi() {
-        return (double pos) -> (double)PConstants.HALF_PI;
+    public FloatOp quarterPi() {
+        return (float pos) -> PConstants.QUARTER_PI;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator that always returns pi regardless of the input.
+     * Returns a FloatOp that always returns a third of pi regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns pi.
+     * @return A FloatOp that always returns quarter pi.
      */
-    public DoubleUnaryOperator pi() {
-        return (double pos) -> (double)PConstants.PI;
+    public FloatOp thirdPi() {
+        return (float pos) -> PConstants.THIRD_PI;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns quarter pi regardless of the input.
+     * Returns a FloatOp that always returns half pi regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns quarter pi.
+     * @return A FloatOp that always returns half pi.
      */
-    public DoubleUnaryOperator quarterPi() {
-        return (double pos) -> (double)PConstants.QUARTER_PI;
+    public FloatOp halfPi() {
+        return (float pos) -> PConstants.HALF_PI;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns two pi regardless of the input.
+     * Returns a FloatOp that always returns pi regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns two pi.
+     * @return A FloatOp that always returns pi.
      */
-    public DoubleUnaryOperator twoPi() {
-        return (double pos) -> (double)PConstants.TWO_PI;
+    public FloatOp pi() {
+        return (float pos) -> PConstants.PI;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the current width of the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns two pi regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the current width of the parent PApplet.
+     * @return A FloatOp that always returns two pi.
      */
-    public DoubleUnaryOperator width() {
-        return (double pos) -> (double)parent.width;
+    public FloatOp twoPi() {
+        return (float pos) -> PConstants.TWO_PI;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the current height of the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns the current width of the parent PApplet regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the current height of the parent PApplet.
+     * @return A FloatOp that always returns the current width of the parent PApplet.
      */
-    public DoubleUnaryOperator height() {
-        return (double pos) -> (double)parent.height;
+    public FloatOp width() {
+        return (float pos) -> parent.width;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the current frame count of the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns the current height of the parent PApplet regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the current frame count of the parent PApplet.
+     * @return A FloatOp that always returns the current height of the parent PApplet.
      */
-    public DoubleUnaryOperator frameCount() {
-        return (double pos) -> (double)parent.frameCount;
+    public FloatOp height() {
+        return (float pos) -> parent.height;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the current x position of the mouse in the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns the current frame count of the parent PApplet regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the current x position of the mouse in the parent PApplet.
+     * @return A FloatOp that always returns the current frame count of the parent PApplet.
      */
-    public DoubleUnaryOperator mouseX() {
-        return (double pos) -> (double)parent.mouseX;
+    public FloatOp frameCount() {
+        return (float pos) -> parent.frameCount;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the current y position of the mouse in the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns the current x position of the mouse in the parent PApplet regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the current y position of the mouse in the parent PApplet.
+     * @return A FloatOp that always returns the current x position of the mouse in the parent PApplet.
      */
-    public DoubleUnaryOperator mouseY() {
-        return (double pos) -> (double)parent.mouseY;
+    public FloatOp mouseX() {
+        return (float pos) -> parent.mouseX;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the previous x position of the mouse in the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns the current y position of the mouse in the parent PApplet regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the previous x position of the mouse in the parent PApplet.
+     * @return A FloatOp that always returns the current y position of the mouse in the parent PApplet.
      */
-    public DoubleUnaryOperator pmouseX() {
-        return (double pos) -> (double)parent.pmouseX;
+    public FloatOp mouseY() {
+        return (float pos) -> (float)parent.mouseY;
     }
 
     /**
-     * Returns a DoubleUnaryOperator that always returns the previous y position of the mouse in the parent PApplet regardless of the input.
+     * Returns a FloatOp that always returns the previous x position of the mouse in the parent PApplet regardless of the input.
      *
-     * @return A DoubleUnaryOperator that always returns the previous y position of the mouse in the parent PApplet.
+     * @return A FloatOp that always returns the previous x position of the mouse in the parent PApplet.
      */
-    public DoubleUnaryOperator pmouseY() {
-        return (double pos) -> (double)parent.pmouseY;
+    public FloatOp pmouseX() {
+        return (float pos) -> (float)parent.pmouseX;
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents a constant value function with optional modification.
-     * @param v Value operator.
-     * @param m Boolean modifier flag. If true, the pos value will be modified before applying to value operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp that always returns the previous y position of the mouse in the parent PApplet regardless of the input.
+     *
+     * @return A FloatOp that always returns the previous y position of the mouse in the parent PApplet.
      */
-    public DoubleUnaryOperator constValue(DoubleUnaryOperator v, boolean m, DoubleUnaryOperator a, 
-                                          DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            if (m) {
-                pos = calcPos(pos, r, p);
-                if (v != null) {
-                    return ampBias(v.applyAsDouble(pos), a, b, pos);
-                }
-            }
-            return v.applyAsDouble(pos);
-        };
+    public FloatOp pmouseY() {
+        return (float pos) -> (float)parent.pmouseY;
     }
-
+    
     /**
-     * Returns a DoubleUnaryOperator which represents a noise function with optional modification.
+     * Returns a FloatOp which represents a wavetable.
+     * @return FloatOp representing the described function.
+     */
+    public FloatOp table() {
+		return pos -> {
+			int t = (int) PApplet.map((float) pos, 0, 1, 0, this.table.length);
+			float samp = (float) this.table[t];
+			return (samp + 1f) / 2f;
+		};
+    }
+    
+    /**
+     * Returns a FloatOp which represents a random number generator function with Gaussian/normal distribution.
      * @param lo Lower bound operator.
      * @param hi Upper bound operator.
-     * @param mode Mode operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator noise(DoubleUnaryOperator lo, DoubleUnaryOperator hi, 
-                                     DoubleUnaryOperator mode, DoubleUnaryOperator a, 
-                                     DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp gaussian(FloatOp lo, FloatOp hi) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double hiVal = (hi != null) ? hi.applyAsDouble(pos) : pos;
+            float g = parent.randomGaussian();
+            if (g < -1f) {
+            	g = g % -1f;
+            } else if (g > 1f) {
+            	g = g % 1f;
+            }
+            g = (g + 1) * 0.5f;
+            float loVal = (lo != null) ? lo.apply(pos) : 0f;
+            float hiVal = (hi != null) ? hi.apply(pos) : 1f;
+            return loVal + (g * (hiVal - loVal));
+        };
+    }
+    
+    public FloatOp gaussian() {
+    	return gaussian(null, null);
+    }
+    
+    public FloatOp gaussian(FloatOp hi) {
+    	return gaussian(null, hi);
+    }
+    
+    public FloatOp gaussian(float hi) {
+    	return gaussian(null, c(hi));
+    }
+    
+    /**
+     * Returns a FloatOp which represents a random number generator function with optional mode.
+     * @param lo Lower bound operator.
+     * @param hi Upper bound operator.
+     * @param mode Mode operator, if null Uniform else Triangular Distribution.
+     * @return FloatOp representing the described function.
+     */
+    public FloatOp random(FloatOp lo, FloatOp hi, FloatOp mode) {
+        return pos -> {
+            float loVal = (lo != null) ? lo.apply(pos) : 0f;
+            float hiVal = (hi != null) ? hi.apply(pos) : 1f;
             if (mode != null) {
-                double modeVal = mode.applyAsDouble(pos);
-                return ampBias(triDistribution((lo != null) ? lo.applyAsDouble(pos) : 0, hiVal, modeVal), a, b, pos);
+                float modeVal = mode.apply(pos);
+                return triDist(loVal, hiVal, modeVal);
             } else {
-                double randFloat = (lo != null ? lo.applyAsDouble(pos) : 0) + parent.random((float)(hiVal - (lo != null ? lo.applyAsDouble(pos) : 0)));
-                return ampBias(randFloat, a, b, pos);
+                return loVal + parent.random(hiVal - loVal);
             }
         };
     }
+    
+    public FloatOp random() {
+    	return random(null, null, null);
+    }
+    
+    public FloatOp random(FloatOp hi) {
+    	return random(null, hi, null);
+    }
+    
+    public FloatOp random(float hi) {
+    	return random(null, c(hi), null);
+    }
 
     /**
-     * Generates a DoubleUnaryOperator for Perlin noise. The noise value is determined by applying the
-     * supplied DoubleUnaryOperator parameters as x, y, and z coordinates in the Perlin noise space.
+     * Generates a FloatOp for Perlin noise. The noise value is determined by applying the
+     * supplied FloatOp parameters as x, y, and z coordinates in the Perlin noise space.
      *
-     * @param x A DoubleUnaryOperator used to compute the x-coordinate for the Perlin noise function.
-     * @param y A DoubleUnaryOperator used to compute the y-coordinate for the Perlin noise function.
-     * @param z A DoubleUnaryOperator used to compute the z-coordinate for the Perlin noise function.
-     * @return A DoubleUnaryOperator that represents Perlin noise over the 3-dimensional space defined by the input functions.
+     * @param x A FloatOp used to compute the x-coordinate for the Perlin noise function.
+     * @param y A FloatOp used to compute the y-coordinate for the Perlin noise function.
+     * @param z A FloatOp used to compute the z-coordinate for the Perlin noise function.
+     * @param octaves A FloatOp used to compute the number of octaves to be used by the noise, defaults to 4.
+     * @param falloff A FloatOp used to compute the falloff factor for each octave, defaults to 0.5.
+     * @return A FloatOp that represents Perlin noise over the 3-dimensional space defined by the input functions.
      */
-    public DoubleUnaryOperator perlin(DoubleUnaryOperator x, DoubleUnaryOperator y, DoubleUnaryOperator z) {
+    public FloatOp perlin(FloatOp x, FloatOp y, FloatOp z, FloatOp octaves, FloatOp falloff) {
         return pos -> {
-            double xV = x.applyAsDouble(pos);
+        	int lod = 4;
+        	float fof = 0.5f;
+        	if (octaves != null) {
+        		lod = (int) octaves.apply(pos);
+        	}
+        	if (falloff != null) {
+        		fof = falloff.apply(pos);
+        	}
+        	parent.noiseDetail(lod, fof);
+            float xV = x.apply(pos);
             if (y == null) {
-                return parent.noise((float) xV);
+                return parent.noise(xV);
             }
-            double yV = y.applyAsDouble(pos);
+            float yV = y.apply(pos);
             if (z == null) {
-                return parent.noise((float) xV, (float) yV);
+                return parent.noise(xV, yV);
             }
-            double zV = z.applyAsDouble(pos);
-            return parent.noise((float) xV, (float) yV, (float) zV);
+            float zV = z.apply(pos);
+            return parent.noise(xV, yV, zV);
         };
+    }
+    
+    public FloatOp perlin(FloatOp x) {
+    	return perlin(x, null, null, null, null);
+    }
+    
+    public FloatOp perlin(float x) {
+    	return perlin(c(x), null, null, null, null);
+    }
+    
+    public FloatOp perlin(FloatOp x, FloatOp y) {
+    	return perlin(x, y, null, null, null);
+    }
+    
+    public FloatOp perlin(float x, float y) {
+    	return perlin(c(x), c(y), null, null, null);
+    }
+    
+    public FloatOp perlin(FloatOp x, FloatOp y, FloatOp z) {
+    	return perlin(x, y, z, null, null);
+    }
+    
+    public FloatOp perlin(float x, float y, float z) {
+    	return perlin(c(x), c(y), c(z), null, null);
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents a ramp function with optional modification.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents a ramp function.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator ramp(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp phasor() {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias(pos, a, b, pos);
+            return pos;
         };
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents a sawtooth waveform function.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents a sawtooth waveform function.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator saw(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp saw() {
         return pos -> {
-            pos = calcPos(1 - pos, r, p);
-            return ampBias(pos, a, b, pos);
+            return 1f - pos;
         };
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents a triangular waveform function.
-     * @param s Shape operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents a triangular waveform function.
+     * @param s Symmetry operator.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator tri(DoubleUnaryOperator s, DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp tri(FloatOp s) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double sValue = s.applyAsDouble(pos);
-            double value = pos < sValue ? pos / sValue : 1 - ((pos - sValue) / (1 - sValue));
-            return ampBias(value, a, b, pos);
+        	float sValue = 0.5f;
+        	if (s != null) sValue = s.apply(pos);
+            return pos < sValue ? pos / sValue : 1f - ((pos - sValue) / (1f - sValue));
         };
+    }
+    
+    public FloatOp tri() {
+    	return tri(null);
+    }
+    
+    public FloatOp tri(float s) {
+    	return tri(c(s));
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents a sine waveform function.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents a sine waveform function with optional feedback.
+     * @param fb function to calculate the amount of feedback.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator sine(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp sine(FloatOp fb) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.sin(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
+            if (fb != null) {
+            	float fbScale = fb.apply(pos);
+            	pos = pos + fbScale * (float) (Math.sin(pos2Rad(pos)) * 0.5f) + 0.5f;
+            }
+            return (float) (Math.sin(pos2Rad(pos % 1f)) * 0.5f) + 0.5f;
         };
+    }
+    
+    public FloatOp sine() {
+    	return sine(null);
+    }
+    
+    public FloatOp sine(float fb) {
+    	return sine(c(fb));
+    }
+    
+    /**
+     * Creates a cosine wave function with optional feedback
+     * @param fb function to calculate the amount of feedback
+     * @return a FloatOp representing the function
+     */
+    public FloatOp cos(FloatOp fb) {
+        return pos -> {
+            if (fb != null) {
+            	float fbScale = fb.apply(pos);
+            	pos = pos + fbScale * (float) ((Math.cos(pos2Rad(pos)) * 0.5f) + 0.5f);
+            }
+            return (float) (Math.cos(pos2Rad(pos % 1f)) * 0.5f) + 0.5f;
+        };
+    }
+    
+    public FloatOp cos() {
+    	return cos(null);
+    }
+    
+    public FloatOp cos(float fb) {
+    	return cos(c(fb));
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents a pulse waveform function.
+     * Creates a tangent wave function with optional feedback.
+     * @param fb function to calculate the amount of feedback
+     * @return a FloatOp representing the function
+     */
+    public FloatOp tan(FloatOp fb) {
+        return pos -> {
+            if (fb != null) {
+            	float fbScale = fb.apply(pos);
+            	pos = pos + fbScale * (float) ((Math.tan(pos2Rad(pos)) * 0.5f) + 0.5f);
+            }
+            return (float) (Math.tan(pos2Rad(pos % 1f)) * 0.5f) + 0.5f;
+        };
+    }
+    
+    public FloatOp tan() {
+    	return tan(null);
+    }
+    
+    public FloatOp tan(float fb) {
+    	return tan(c(fb));
+    }
+
+    /**
+     * Returns a FloatOp which represents a pulse waveform function.
      * @param w Width operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator pulse(DoubleUnaryOperator w, DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp pulse(FloatOp w) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double wValue = w.applyAsDouble(pos);
-            double value = pos < wValue ? 0 : 1;
-            return ampBias(value, a, b, pos);
+        	float wValue = 0.5f;
+        	if (w != null) wValue = w.apply(pos);
+            return pos < wValue ? 0f : 1f;
         };
+    }
+    
+    public FloatOp pulse() {
+    	return pulse(null);
+    }
+    
+    public FloatOp pulse(float w) {
+    	return pulse(c(w));
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents an ease-in curve function.
-     * @param e Ease operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents an ease-in curve function.
+     * @param e Ease operator, default value 2.0.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator easeIn(DoubleUnaryOperator e, DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp easeIn(FloatOp e) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double eValue = e.applyAsDouble(pos);
-            return ampBias(Math.pow(pos, eValue), a, b, pos);
+        	float eValue = 2.0f;
+        	if (e != null) eValue = e.apply(pos);
+            return (float) Math.pow(pos, eValue);
         };
+    }
+    
+    public FloatOp easeIn() {
+    	return easeIn(null);
+    }
+    
+    public FloatOp easeIn(float e) {
+    	return easeIn(c(e));
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents an ease-out curve function.
-     * @param e Ease operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents an ease-out curve function.
+     * @param e Ease operator, default value 3.0.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator easeOut(DoubleUnaryOperator e, DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp easeOut(FloatOp e) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double eValue = e.applyAsDouble(pos);
-            return ampBias((1 - Math.pow((1 - pos), eValue)), a, b, pos);
+            float eValue = 3.0f;
+            if (e != null) eValue = e.apply(pos);
+            return (float) (1 - Math.pow((1 - pos), eValue));
         };
+    }
+    
+    public FloatOp easeOut() {
+    	return easeOut(null);
+    }
+    
+    public FloatOp easeOut(float e) {
+    	return easeOut(c(e));
     }
 
     /**
-     * Returns a DoubleUnaryOperator which represents an ease-in-out curve function.
-     * @param e Ease operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents an ease-in-out curve function.
+     * @param e Ease operator, default value 3.0.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator easeInOut(DoubleUnaryOperator e, DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp easeInOut(FloatOp e) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double value = pos * 2;
-            double eValue = e.applyAsDouble(pos);
+            float value = pos * 2f;
+            float eValue = 3.0f;
+            if (e != null) eValue = e.apply(pos);
             if (value < 1) {
-                return ampBias(0.5 * Math.pow(value, eValue), a, b, pos);
+                return 0.5f * (float) Math.pow(value, eValue);
             } else {
-                return ampBias(0.5 * (2 - Math.pow((2 - value), eValue)), a, b, pos);
+                return 0.5f * (float) (2f - Math.pow((2f - value), eValue));
             }
         };
     }
+    
+    public FloatOp easeInOut() {
+    	return easeInOut(null);
+    }
+    
+    public FloatOp easeInOut(float e) {
+    	return easeInOut(c(e));
+    }
 
     /**
-     * Returns a DoubleUnaryOperator which represents an ease-out-in curve function.
-     * @param e Ease operator.
-     * @param a Amplifier operator.
-     * @param r Rate operator.
-     * @param p Phase operator.
-     * @param b Bias operator.
-     * @return DoubleUnaryOperator representing the described function.
+     * Returns a FloatOp which represents an ease-out-in curve function.
+     * @param e Ease operator, default value 3.0.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator easeOutIn(DoubleUnaryOperator e, DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    public FloatOp easeOutIn(FloatOp e) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            double eValue = e.applyAsDouble(pos);
-            double value = (pos * 2) - 1;
-            if (value < 0) {
-                return ampBias(0.5 * Math.pow(value, eValue) + 0.5, a, b, pos);
+        	float value = pos * 2f;
+            float eValue = 3.0f;
+            if (e != null) eValue = e.apply(pos);
+            if (value < 1) {
+            	return (float) (1f - Math.pow((1f - value), eValue) * 0.5f) - 0.5f;
             } else {
-                return ampBias(1 - (0.5 * Math.pow(value, eValue) + 0.5), a, b, pos);
+            	value = value - 1;
+            	return (float) (Math.pow(value, eValue) * 0.5f) + 0.5f;
             }
         };
     }
-
-    /**
-     * Creates a cosine wave function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator cos(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.cos(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
+    
+    public FloatOp easeOutIn() {
+    	return easeOutIn(null);
     }
-
-    /**
-     * Creates a tangent wave function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator tan(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.tan(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
+    
+    public FloatOp easeOutIn(float e) {
+    	return easeOutIn(c(e));
     }
-
-    /**
-     * Creates a hyperbolic sine function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator sinh(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
+    
+    public FloatOp fold(FloatOp curve, FloatOp threshold) {
         return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.sinh(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates a hyperbolic cosine function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator cosh(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.cosh(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates a hyperbolic tangent function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator tanh(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.tanh(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates an inverse cosine function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator acos(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.acos(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates an inverse tangent function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator atan(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.atan(pos2Rad(pos)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates an inverse hyperbolic sine function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator asinh(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.log(pos + Math.sqrt(pos*pos + 1)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates an inverse hyperbolic cosine function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator acosh(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias((Math.log(pos + Math.sqrt(pos*pos - 1)) * 0.5) + 0.5, a, b, pos);
-        };
-    }
-
-    /**
-     * Creates an inverse hyperbolic tangent function.
-     * 
-     * @param a amplitude function
-     * @param r rate function
-     * @param p phase function
-     * @param b bias function
-     * @return a DoubleUnaryOperator representing the function
-     */
-    public DoubleUnaryOperator atanh(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias(0.5 * Math.log((1 + pos) / (1 - pos)), a, b, pos);
-        };
-    }
-
-    /**
-     * Creates a DoubleUnaryOperator representing the natural logarithm function (ln).
-     *
-     * @param a the amplitude as a DoubleUnaryOperator.
-     * @param r the rate as a DoubleUnaryOperator.
-     * @param p the phase as a DoubleUnaryOperator.
-     * @param b the bias as a DoubleUnaryOperator.
-     * @return a DoubleUnaryOperator representing the natural logarithm function.
-     */
-    public DoubleUnaryOperator ln(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias(Math.log(pos), a, b, pos);
-        };
-    }
-
-    /**
-     * Creates a DoubleUnaryOperator representing the exponential function (exp).
-     *
-     * @param a the amplitude as a DoubleUnaryOperator.
-     * @param r the rate as a DoubleUnaryOperator.
-     * @param p the phase as a DoubleUnaryOperator.
-     * @param b the bias as a DoubleUnaryOperator.
-     * @return a DoubleUnaryOperator representing the exponential function.
-     */
-    public DoubleUnaryOperator exp(DoubleUnaryOperator a, DoubleUnaryOperator r, DoubleUnaryOperator p, DoubleUnaryOperator b) {
-        return pos -> {
-            pos = calcPos(pos, r, p);
-            return ampBias(Math.exp(pos), a, b, pos);
+        	float tVal = threshold.apply(pos);
+            float value = curve.apply(pos);
+            while (value > tVal) {
+            	value = tVal - (value - tVal);
+            }
+            return value;
         };
     }
 
@@ -693,23 +643,33 @@ public class Crvs {
      * @param values Array of values to normalize.
      * @return Array of normalized values.
      */
-    public double[] normalize(double[] values) {
-        double min = Arrays.stream(values).min().getAsDouble();
-        double max = Arrays.stream(values).max().getAsDouble();
-        return Arrays.stream(values).map(v -> (v - min) / (max - min)).toArray();
+    public float[] normalize(float[] values) {
+        double[] dValues = new double[values.length];
+        for (int i = 0; i < values.length; i++)
+        {
+        	dValues[i] = values[i];
+        }
+        double min = Arrays.stream(dValues).min().getAsDouble();
+        double max = Arrays.stream(dValues).max().getAsDouble();
+        double[] normDVals = Arrays.stream(dValues).map(v -> (v - min) / (max - min)).toArray();
+        float[] normFloats = new float[values.length];
+        for (int i=0; i< values.length; i++) {
+        	normFloats[i] = (float) normDVals[i];
+        }
+        return normFloats;
     }
 
     /**
-     * Returns a DoubleUnaryOperator which interpolates between given y-values at given position.
+     * Returns a FloatOp which interpolates between given y-values at given position.
      * @param yvalues Array of y-values.
-     * @return DoubleUnaryOperator representing the described function.
+     * @return FloatOp representing the described function.
      */
-    public DoubleUnaryOperator timeseries(double[] yvalues) {
-    	double[] normalizedYvalues = normalize(yvalues);
+    public FloatOp timeseries(float[] yvalues) {
+    	float[] normalizedYvalues = normalize(yvalues);
         return pos -> {
-            int index = (int) (pos * (normalizedYvalues.length - 1));
-            double fraction = pos * (normalizedYvalues.length - 1) - index;
-            return (normalizedYvalues[index] * (1.0 - fraction)) + (normalizedYvalues[index + 1] * fraction);
+            int index = (int) (pos * (normalizedYvalues.length - 1f));
+            float fraction = pos * (normalizedYvalues.length - 1f) - index;
+            return (normalizedYvalues[index] * (1.0f - fraction)) + (normalizedYvalues[index + 1] * fraction);
         };
     }
 
@@ -720,32 +680,45 @@ public class Crvs {
      * @param mapFunc Mapping function to apply to each value.
      * @return Array of transformed values.
      */
-    public double[] toTable(DoubleUnaryOperator f, int numSamples, DoubleUnaryOperator mapFunc) {
-        return DoubleStream.iterate(0, i -> i + 1.0 / numSamples).limit(numSamples)
-                .map(f).map(mapFunc).toArray();
+    public float[] toTable(FloatOp f, int numSamples, FloatOp mapFunc) {
+    	float step = 1f / numSamples;
+    	float[] table = new float[numSamples];
+    	for (int i=0; i<numSamples; i++) {
+    		float x = i * step;
+    		table[i] = f.apply(x / numSamples);
+    	}
+    	if (mapFunc == null) {
+    		return table;
+    	}
+        float[] mapOut = new float[numSamples];
+        for(int i=0; i<numSamples; i++) {
+        	mapOut[i] = mapFunc.apply(table[i]);
+        }
+        return mapOut;
     }
     
     /**
      * Generates an array of points that are distributed along the provided curve.
      *
-     * The curve is represented by the given DoubleUnaryOperator function.
+     * The curve is represented by the given FloatOp function.
      * The points are spaced equally along the x-axis between the provided start and end values.
      * The total number of points generated is specified by the numPoints parameter.
      *
-     * @param curve a DoubleUnaryOperator function representing the curve.
+     * @param curve a FloatOp function representing the curve.
      * @param start the x-coordinate of the first point.
      * @param end the x-coordinate of the last point.
      * @param numPoints the total number of points to generate.
      * @return an array of PVector objects representing the points along the curve.
      */
-    public PVector[] distributePoints(DoubleUnaryOperator curve, float start, float end, int numPoints) {
+    public PVector[] points(FloatOp curve, float start, float end, int numPoints, float yscale) {
         PVector[] points = new PVector[numPoints];
-        float step = (end - start) / (numPoints - 1);
+        float step = (end - start) / numPoints;
+        end = end - (step - 1);
 
         for(int i = 0; i < numPoints; i++) {
             float x = start + i * step;
-            float y = (float) curve.applyAsDouble(x / end);
-            points[i] = new PVector(x, y);
+            float y = curve.apply(x / end);
+            points[i] = new PVector(x, parent.height - y*yscale);
         }
 
         return points;
@@ -755,19 +728,29 @@ public class Crvs {
      * Plots the curve of the provided function on the parent PApplet instance.
      * The function is evaluated across the width of the sketch, and the result is scaled and drawn as a curve.
      *
-     * @param func The function to plot. This should be a DoubleUnaryOperator which takes a single argument in the range [0, 1] 
+     * @param func The function to plot. This should be a FloatOp which takes a single argument in the range [0, 1] 
      *             and returns a single value, which will be plotted on the y-axis.
      * @param yscale The vertical scale factor to apply to the output of the function. This controls the height of the curve on the sketch.
+     * @param color Processing color int to use for stroke or fill
+     * @param fill If true fill w/ noStroke, if false stroke w/ noFill
      */
-    public void plot(DoubleUnaryOperator func, float yscale) {
-        parent.stroke(255, 0, 0); // Set line color to red
+    public void plot(FloatOp func, float yscale, int color, boolean fill) {
+    	if (fill) {
+    		parent.noStroke();
+    		parent.fill(color);
+    	} else {
+    		parent.noFill();
+    		parent.stroke(color);
+    	}
+        PVector[] points = points(func, 0, parent.width, parent.width, yscale);
         parent.beginShape();
-        for (int x = 0; x < parent.width; x++) {
-            float t = (float)x / parent.width;  // Normalize x to range [0, 1]
-            float y = (float)func.applyAsDouble(t); // Evaluate the function at t
-            parent.vertex(x, parent.height - y*yscale); // Add a vertex at (x, y). Flip y to match Processing's coordinate system
+        for (int i = 0; i < points.length; i++) {
+        	PVector p = points[i];
+        	parent.vertex(p.x, parent.height - p.y);
         }
         parent.endShape();
     }
+    
+    
 
 }
