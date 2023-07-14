@@ -10,20 +10,20 @@ import java.lang.Math;
 /**
  * This class provides a set of operations to create and manipulate curves.
  */
-public class Crvs {
+public class Ops {
 	
     PApplet parent;
     float[] table;
 
     /**
-     * Initializes a new instance of the Curves class with a reference to the parent PApplet.
-     * This is necessary for the Curves class to be able to draw on the parent PApplet's canvas.
+     * Initializes a new instance of the Ops class with a reference to the parent PApplet.
+     * This is necessary for the Ops class to be able to use the PApplet's random functions.
      *
      * @param parent A reference to the parent PApplet instance. This is typically passed in from a sketch 
      *               using the 'this' keyword.
      * @param table An array of floats to be used as a wavetable by the table() method.
      */
-    public Crvs(PApplet parent, float[] table) {
+    public Ops(PApplet parent, float[] table) {
         this.parent = parent;
         if (table != null) {
         	this.table = table;
@@ -33,8 +33,45 @@ public class Crvs {
         }
     }
     
-    public Crvs(PApplet parent) {
+    /**
+     * Initializes a new instance of the Ops class with a reference to the parent PApplet.
+     * This is necessary for the Ops class to be able to use the PApplet's random functions.
+     *
+     * @param parent A reference to the parent PApplet instance. This is typically passed in from a sketch 
+     *               using the 'this' keyword.
+     */
+    public Ops(PApplet parent) {
     	this(parent, null);
+    }
+    
+    /**
+     * Transforms a unipolar FloatOp into a bipolar FloatOp.
+     * The resulting FloatOp takes a position as an argument and applies the unipolar operation, 
+     * then scales the result from a unipolar range [0, 1] to a bipolar range [-1, 1].
+     * 
+     * @param unipolarOp The unipolar FloatOp to be transformed into a bipolar FloatOp.
+     * @return A new FloatOp that applies the unipolar operation and scales the result to the bipolar range.
+     */
+    public FloatOp bipolarize(FloatOp unipolarOp) {
+    	return pos -> {
+    		float unipolarValue = unipolarOp.apply(pos);
+    		return unipolarValue * 2f - 1f;
+    	};
+    }
+    
+    /**
+     * Transforms a bipolar FloatOp into a unipolar FloatOp.
+     * The resulting FloatOp takes a position as an argument and applies the bipolar operation, 
+     * then scales the result from a bipolar range [-1, 1] to a unipolar range [0, 1].
+     * 
+     * @param bipolarOp The bipolar FloatOp to be transformed into a unipolar FloatOp.
+     * @return A new FloatOp that applies the bipolar operation and scales the result to the unipolar range.
+     */
+    public FloatOp rectify(FloatOp bipolarOp) {
+    	return pos -> {
+    		float bipolarValue = bipolarOp.apply(pos);
+    		return bipolarValue * 0.5f + 0.5f;
+    	};
     }
 
     /**
@@ -60,8 +97,8 @@ public class Crvs {
     
     /**
      * Generates a random number using triangular distribution between a given range.
-     * @param low Lower limit of the distribution.
-     * @param high Upper limit of the distribution.
+     * @param lo Lower limit of the distribution.
+     * @param hi Upper limit of the distribution.
      * @param mode Mode of the distribution.
      * @return A random number generated using the triangular distribution.
      */
@@ -270,17 +307,20 @@ public class Crvs {
      */
     public FloatOp table() {
 		return pos -> {
-			int t = (int) PApplet.map((float) pos, 0, 1, 0, this.table.length);
-			float samp = (float) this.table[t];
+			int t = (int) PApplet.map(pos, 0, 1, 0, this.table.length);
+			float samp = this.table[t];
 			return (samp + 1f) / 2f;
 		};
     }
     
     /**
-     * Returns a FloatOp which represents a random number generator function with Gaussian/normal distribution.
-     * @param lo Lower bound operator.
-     * @param hi Upper bound operator.
-     * @return FloatOp representing the described function.
+     * Generates a FloatOp for a Gaussian distribution that fluctuates between the values produced by the input FloatOps.
+     * The resulting FloatOp applies a Gaussian operation to a position and scales it between the values provided by the lo and hi FloatOps at that position.
+     * If either lo or hi is null, their respective values are defaulted to 0 and 1 respectively.
+     * 
+     * @param lo The lower bound FloatOp. If null, defaults to 0.
+     * @param hi The upper bound FloatOp. If null, defaults to 1.
+     * @return A new FloatOp that applies the Gaussian operation and scales it between the values provided by the lo and hi FloatOps.
      */
     public FloatOp gaussian(FloatOp lo, FloatOp hi) {
         return pos -> {
@@ -297,24 +337,46 @@ public class Crvs {
         };
     }
     
+    /**
+     * Generates a FloatOp for a Gaussian distribution that fluctuates between 0 and 1.
+     * This is equivalent to calling gaussian(null, null).
+     * 
+     * @return A new FloatOp that applies the Gaussian operation and scales it between 0 and 1.
+     */
     public FloatOp gaussian() {
     	return gaussian(null, null);
     }
     
+    /**
+     * Generates a FloatOp for a Gaussian distribution that fluctuates between 0 and the value produced by the hi FloatOp.
+     * This is equivalent to calling gaussian(null, hi).
+     * 
+     * @param hi The upper bound FloatOp. 
+     * @return A new FloatOp that applies the Gaussian operation and scales it between 0 and the value provided by the hi FloatOp.
+     */
     public FloatOp gaussian(FloatOp hi) {
     	return gaussian(null, hi);
     }
     
+    /**
+     * Generates a FloatOp for a Gaussian distribution that fluctuates between 0 and the constant value hi.
+     * This is equivalent to calling gaussian(null, c(hi)).
+     * 
+     * @param hi The upper bound as a constant float value.
+     * @return A new FloatOp that applies the Gaussian operation and scales it between 0 and the constant hi value.
+     */
     public FloatOp gaussian(float hi) {
     	return gaussian(null, c(hi));
     }
     
     /**
-     * Returns a FloatOp which represents a random number generator function with optional mode.
-     * @param lo Lower bound operator.
-     * @param hi Upper bound operator.
-     * @param mode Mode operator, if null Uniform else Triangular Distribution.
-     * @return FloatOp representing the described function.
+     * Returns a FloatOp that applies a random operation within the range defined by two other FloatOps (lo and hi).
+     * The random operation can be either uniformly random across the range, or triangularly distributed according to a third FloatOp (mode).
+     *
+     * @param lo   The lower bound FloatOp. If null, defaults to 0.
+     * @param hi   The upper bound FloatOp. If null, defaults to 1.
+     * @param mode A FloatOp that determines the mode of the triangular distribution. If null, the operation is uniformly random.
+     * @return A new FloatOp that applies the random operation according to the parameters.
      */
     public FloatOp random(FloatOp lo, FloatOp hi, FloatOp mode) {
         return pos -> {
@@ -329,28 +391,48 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp that generates a random float between 0 and 1. 
+     * Equivalent to calling random(null, null, null).
+     * 
+     * @return A new FloatOp that generates a random float between 0 and 1.
+     */
     public FloatOp random() {
     	return random(null, null, null);
     }
     
+    /**
+     * Returns a FloatOp that generates a random float between 0 and the value produced by the hi FloatOp.
+     * Equivalent to calling random(null, hi, null).
+     * 
+     * @param hi The upper bound FloatOp.
+     * @return A new FloatOp that generates a random float between 0 and the value produced by the hi FloatOp.
+     */
     public FloatOp random(FloatOp hi) {
     	return random(null, hi, null);
     }
     
+    /**
+     * Returns a FloatOp that generates a random float between 0 and the constant hi.
+     * Equivalent to calling random(null, c(hi), null).
+     * 
+     * @param hi The upper bound as a constant float value.
+     * @return A new FloatOp that generates a random float between 0 and the constant hi.
+     */
     public FloatOp random(float hi) {
     	return random(null, c(hi), null);
     }
 
     /**
-     * Generates a FloatOp for Perlin noise. The noise value is determined by applying the
-     * supplied FloatOp parameters as x, y, and z coordinates in the Perlin noise space.
+     * Returns a FloatOp that applies a Perlin noise operation to the values produced by the x, y, and z FloatOps. The noise detail is
+     * determined by the octaves and falloff FloatOps.
      *
-     * @param x A FloatOp used to compute the x-coordinate for the Perlin noise function.
-     * @param y A FloatOp used to compute the y-coordinate for the Perlin noise function.
-     * @param z A FloatOp used to compute the z-coordinate for the Perlin noise function.
-     * @param octaves A FloatOp used to compute the number of octaves to be used by the noise, defaults to 4.
-     * @param falloff A FloatOp used to compute the falloff factor for each octave, defaults to 0.5.
-     * @return A FloatOp that represents Perlin noise over the 3-dimensional space defined by the input functions.
+     * @param x        The FloatOp for the x-coordinate of the Perlin noise. It cannot be null.
+     * @param y        The FloatOp for the y-coordinate of the Perlin noise. If null, the function becomes 1D Perlin noise.
+     * @param z        The FloatOp for the z-coordinate of the Perlin noise. If null, the function becomes 2D Perlin noise.
+     * @param octaves  The FloatOp for the number of octaves of the Perlin noise. If null, defaults to 4.
+     * @param falloff  The FloatOp for the falloff factor of the Perlin noise. If null, defaults to 0.5.
+     * @return A new FloatOp that applies the Perlin noise operation according to the parameters.
      */
     public FloatOp perlin(FloatOp x, FloatOp y, FloatOp z, FloatOp octaves, FloatOp falloff) {
         return pos -> {
@@ -376,32 +458,80 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp that applies a 1D Perlin noise operation to the value produced by the x FloatOp.
+     * Equivalent to calling perlin(x, null, null, null, null).
+     *
+     * @param x The FloatOp for the x-coordinate of the Perlin noise.
+     * @return A new FloatOp that applies the 1D Perlin noise operation.
+     */
     public FloatOp perlin(FloatOp x) {
     	return perlin(x, null, null, null, null);
     }
     
+    /**
+     * Returns a FloatOp that applies a 1D Perlin noise operation to the constant x.
+     * Equivalent to calling perlin(c(x), null, null, null, null).
+     *
+     * @param x The constant value for the x-coordinate of the Perlin noise.
+     * @return A new FloatOp that applies the 1D Perlin noise operation.
+     */
     public FloatOp perlin(float x) {
     	return perlin(c(x), null, null, null, null);
     }
     
+    /**
+     * Returns a FloatOp that applies a 2D Perlin noise operation to the values produced by the x and y FloatOps.
+     * Equivalent to calling perlin(x, y, null, null, null).
+     *
+     * @param x The FloatOp for the x-coordinate of the Perlin noise.
+     * @param y The FloatOp for the y-coordinate of the Perlin noise.
+     * @return A new FloatOp that applies the 2D Perlin noise operation.
+     */
     public FloatOp perlin(FloatOp x, FloatOp y) {
     	return perlin(x, y, null, null, null);
     }
     
+    /**
+     * Returns a FloatOp that applies a 2D Perlin noise operation to the constant values x and y.
+     * Equivalent to calling perlin(c(x), c(y), null, null, null).
+     *
+     * @param x The constant value for the x-coordinate of the Perlin noise.
+     * @param y The constant value for the y-coordinate of the Perlin noise.
+     * @return A new FloatOp that applies the 2D Perlin noise operation.
+     */
     public FloatOp perlin(float x, float y) {
     	return perlin(c(x), c(y), null, null, null);
     }
     
+    /**
+     * Returns a FloatOp that applies a 3D Perlin noise operation to the values produced by the x, y, and z FloatOps.
+     * Equivalent to calling perlin(x, y, z, null, null).
+     *
+     * @param x The FloatOp for the x-coordinate of the Perlin noise.
+     * @param y The FloatOp for the y-coordinate of the Perlin noise.
+     * @param z The FloatOp for the z-coordinate of the Perlin noise.
+     * @return A new FloatOp that applies the 3D Perlin noise operation.
+     */
     public FloatOp perlin(FloatOp x, FloatOp y, FloatOp z) {
     	return perlin(x, y, z, null, null);
     }
     
+    /**
+     * Returns a FloatOp that applies a 3D Perlin noise operation to the constant values x, y, and z.
+     * Equivalent to calling perlin(c(x), c(y), c(z), null, null).
+     *
+     * @param x The constant value for the x-coordinate of the Perlin noise.
+     * @param y The constant value for the y-coordinate of the Perlin noise.
+     * @param z The constant value for the z-coordinate of the Perlin noise.
+     * @return A new FloatOp that applies the 3D Perlin noise operation.
+     */
     public FloatOp perlin(float x, float y, float z) {
     	return perlin(c(x), c(y), c(z), null, null);
     }
 
     /**
-     * Returns a FloatOp which represents a ramp function.
+     * Returns a FloatOp which represents a linear ramp function.
      * @return FloatOp representing the described function.
      */
     public FloatOp phasor() {
@@ -422,7 +552,7 @@ public class Crvs {
 
     /**
      * Returns a FloatOp which represents a triangular waveform function.
-     * @param s Symmetry operator.
+     * @param s Symmetry operator, defaults to 0.5
      * @return FloatOp representing the described function.
      */
     public FloatOp tri(FloatOp s) {
@@ -433,10 +563,19 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents a triangular waveform function, with default symmetry around 0.5
+     * @return FloatOp representing the described function.
+     */
     public FloatOp tri() {
     	return tri(null);
     }
     
+    /**
+     * Returns a FloatOp which represents a triangular waveform function.
+     * @param s Symmetry float value, defaults to 0.5
+     * @return FloatOp representing the described function.
+     */
     public FloatOp tri(float s) {
     	return tri(c(s));
     }
@@ -456,12 +595,32 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents a sine waveform function with no feedback.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp sine() {
     	return sine(null);
     }
     
+    /**
+     * Returns a FloatOp which represents a sine waveform function with optional feedback.
+     * @param fb float to set the amount of feedback.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp sine(float fb) {
     	return sine(c(fb));
+    }
+    
+    /**
+     * Returns a FloatOp which represents an arc sine waveform.
+     * @return FloatOp representing the described function.
+     */
+    public FloatOp asin() {
+    	return pos -> {
+    		pos = pos * 2f - 1f;
+    		return (PApplet.asin(pos) + PConstants.HALF_PI) / PConstants.PI;
+    	};
     }
     
     /**
@@ -479,12 +638,32 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents a cosine waveform function with no feedback.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp cos() {
     	return cos(null);
     }
     
+    /**
+     * Returns a FloatOp which represents a cosine waveform function with optional feedback.
+     * @param fb float to set the amount of feedback.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp cos(float fb) {
     	return cos(c(fb));
+    }
+    
+    /**
+     * Returns a FloatOp which represents an arc cosine waveform.
+     * @return FloatOp representing the described function.
+     */
+    public FloatOp acos() {
+    	return pos -> {
+    		pos = pos * 2f - 1f;
+    		return PApplet.acos(pos) / PConstants.PI;
+    	};
     }
 
     /**
@@ -502,10 +681,19 @@ public class Crvs {
         };
     }
     
+    /**
+     * Creates a tangent wave function with no feedback.
+     * @return a FloatOp representing the function
+     */
     public FloatOp tan() {
     	return tan(null);
     }
     
+    /**
+     * Creates a tangent wave function with optional feedback.
+     * @param fb float to set the amount of feedback
+     * @return a FloatOp representing the function
+     */
     public FloatOp tan(float fb) {
     	return tan(c(fb));
     }
@@ -523,10 +711,27 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents a pulse waveform function with default width 0.5
+     * @return FloatOp representing the described function.
+     */
     public FloatOp pulse() {
     	return pulse(null);
     }
     
+    /**
+     * Returns a FloatOp which represents a square waveform function, convenience alias for default pulse()
+     * @return FloatOp representing the described function.
+     */
+    public FloatOp square() {
+    	return pulse(null);
+    }
+    
+    /**
+     * Returns a FloatOp which represents a pulse waveform function.
+     * @param w Width float.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp pulse(float w) {
     	return pulse(c(w));
     }
@@ -544,10 +749,19 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-in curve function with default e value of 2.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeIn() {
     	return easeIn(null);
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-in curve function.
+     * @param e Ease float, default value 2.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeIn(float e) {
     	return easeIn(c(e));
     }
@@ -565,10 +779,19 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-out curve function with default e value of 3.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeOut() {
     	return easeOut(null);
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-out curve function.
+     * @param e Ease float, default value 3.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeOut(float e) {
     	return easeOut(c(e));
     }
@@ -591,10 +814,19 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-in-out curve function with default e value of 3.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeInOut() {
     	return easeInOut(null);
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-in-out curve function.
+     * @param e Ease float, default value 3.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeInOut(float e) {
     	return easeInOut(c(e));
     }
@@ -618,25 +850,100 @@ public class Crvs {
         };
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-out-in curve function with default e value of 3.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeOutIn() {
     	return easeOutIn(null);
     }
     
+    /**
+     * Returns a FloatOp which represents an ease-out-in curve function.
+     * @param e Ease float, default value 3.0.
+     * @return FloatOp representing the described function.
+     */
     public FloatOp easeOutIn(float e) {
     	return easeOutIn(c(e));
     }
     
-    public FloatOp fold(FloatOp curve, FloatOp threshold) {
+    /**
+     * Returns a FloatOp that multiplies the output of the provided FloatOp with the specified scalar.
+     *
+     * @param op The FloatOp whose output will be multiplied.
+     * @param scalar The scalar to multiply by.
+     * @return A new FloatOp that multiplies the output of the original FloatOp by the scalar.
+     */
+    public FloatOp mult(FloatOp op, float scalar) {
+    	return pos -> {
+    		float v = op.apply(pos);
+    		return v * scalar;
+    	};
+    }
+    
+    /**
+     * Returns a FloatOp that adds the specified offset to the output of the provided FloatOp.
+     *
+     * @param op The FloatOp whose output will be biased.
+     * @param offset The offset to add.
+     * @return A new FloatOp that adds the offset to the output of the original FloatOp.
+     */
+    public FloatOp bias(FloatOp op, float offset) {
+    	return pos -> {
+    		float v = op.apply(pos);
+    		return v + offset;
+    	};
+    }
+    
+    /**
+     * Returns a FloatOp that adds the output of the offset FloatOp to the output of the original FloatOp.
+     *
+     * @param op The original FloatOp.
+     * @param offset The FloatOp that provides the offset to add.
+     * @return A new FloatOp that adds the output of the offset FloatOp to the output of the original FloatOp.
+     */
+    public FloatOp bias(FloatOp op, FloatOp offset) {
+    	return pos -> {
+    		float v = op.apply(pos);
+    		float offV = offset.apply(pos);
+    		return v + offV;
+    	};
+    }
+    
+    /**
+     * Returns a FloatOp that multiplies the output of opA with the output of opB.
+     *
+     * @param opA The first FloatOp.
+     * @param opB The second FloatOp.
+     * @return A new FloatOp that multiplies the outputs of the two original FloatOps.
+     */
+    public FloatOp ring(FloatOp opA, FloatOp opB) {
+    	return pos -> {
+    		float aVal = opA.apply(pos);
+    		float bVal = opB.apply(pos);
+    		return aVal * bVal;
+    	};
+    }
+    
+    /**
+     * Returns a FloatOp that applies a folding operation on the output of the provided FloatOp based on a threshold.
+     * The fold operation reduces the output to within the range [0, threshold], "folding" values over the threshold
+     * back into the range.
+     *
+     * @param op The FloatOp whose output will be folded.
+     * @param threshold The FloatOp that provides the threshold.
+     * @return A new FloatOp that applies the fold operation on the output of the original FloatOp.
+     */
+    public FloatOp fold(FloatOp op, FloatOp threshold) {
         return pos -> {
         	float tVal = threshold.apply(pos);
-            float value = curve.apply(pos);
+            float value = op.apply(pos);
             while (value > tVal) {
             	value = tVal - (value - tVal);
             }
             return value;
         };
     }
-
 
     /**
      * Normalizes the given array of values.
@@ -674,18 +981,18 @@ public class Crvs {
     }
 
     /**
-     * Transforms a given function into a table of values.
-     * @param f Function to transform.
+     * Transforms a given FloatOp into an array of floats.
+     * @param op FloatOp to convert to array.
      * @param numSamples Number of samples to use for transformation.
      * @param mapFunc Mapping function to apply to each value.
      * @return Array of transformed values.
      */
-    public float[] toTable(FloatOp f, int numSamples, FloatOp mapFunc) {
+    public float[] array(FloatOp op, int numSamples, FloatOp mapFunc) {
     	float step = 1f / numSamples;
     	float[] table = new float[numSamples];
     	for (int i=0; i<numSamples; i++) {
     		float x = i * step;
-    		table[i] = f.apply(x / numSamples);
+    		table[i] = op.apply(x / numSamples);
     	}
     	if (mapFunc == null) {
     		return table;
@@ -708,6 +1015,7 @@ public class Crvs {
      * @param start the x-coordinate of the first point.
      * @param end the x-coordinate of the last point.
      * @param numPoints the total number of points to generate.
+     * @param yscale scalar to multiply by the y value
      * @return an array of PVector objects representing the points along the curve.
      */
     public PVector[] points(FloatOp curve, float start, float end, int numPoints, float yscale) {
@@ -750,7 +1058,4 @@ public class Crvs {
         }
         parent.endShape();
     }
-    
-    
-
 }
