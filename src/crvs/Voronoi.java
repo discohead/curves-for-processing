@@ -1,13 +1,29 @@
 package crvs;
 
+import processing.core.PVector;
 import quickhull3d.QuickHull3D;
 
+/**
+ * The type Voronoi.
+ */
 public class Voronoi {
 
-	float[][] edges;
-	MPolygon[] regions;
+    /**
+     * The Edges.
+     */
+    float[][] edges;
+    /**
+     * The Regions.
+     */
+    MPolygon[] regions;
 
-	public Voronoi( float[][] points ){
+    /**
+     * Instantiates a new Voronoi.
+     *
+     * @param vectors the vectors
+     */
+    public Voronoi( PVector[] vectors ){
+		float[][] points = Utils.v2f(vectors);
 
 		if( points.length < 1 ){
 			edges = new float[0][4];
@@ -150,15 +166,47 @@ public class Voronoi {
 
 	}
 
-	public MPolygon[] getRegions(){
+    /**
+     * Get regions m polygon [ ].
+     *
+     * @return the m polygon [ ]
+     */
+    public MPolygon[] getRegions(){
 		return regions;
 	}
 
-	public float[][] getEdges(){
+    /**
+     * Get edges float [ ] [ ].
+     *
+     * @return the float [ ] [ ]
+     */
+    public float[][] getEdges(){
 		return edges;
 	}
 
-	protected boolean isEdgeShared(int face1[], int face2[]){
+    /**
+     * Get edgs edg [ ].
+     *
+     * @param resolution the resolution
+     * @return the edg [ ]
+     */
+    public Edg[] getEdgs(int resolution) {
+		float[][] edges = this.getEdges();
+		Edg[] edgs = new Edg[edges.length];
+		for (int i = 0; i < edges.length; i++) {
+			edgs[i] = new Edg(edges[i], resolution);
+		}
+		return edgs;
+	}
+
+    /**
+     * Is edge shared boolean.
+     *
+     * @param face1 the face 1
+     * @param face2 the face 2
+     * @return the boolean
+     */
+    protected boolean isEdgeShared(int face1[], int face2[]){
 		for(int i = 0; i < face1.length; i++){
 			int cur = face1[i];
 			int next = face1[(i + 1) % face1.length];

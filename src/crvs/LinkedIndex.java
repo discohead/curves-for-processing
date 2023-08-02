@@ -2,34 +2,71 @@ package crvs;
 
 import processing.core.PApplet;
 
+/**
+ * The type Linked index.
+ */
 public class LinkedIndex {
 
-	LinkedArray array;
-	int index;
-	int[] links;
-	int linkCount;
+    /**
+     * The Array.
+     */
+    LinkedArray array;
+    /**
+     * The Index.
+     */
+    int index;
+    /**
+     * The Links.
+     */
+    int[] links;
+    /**
+     * The Link count.
+     */
+    int linkCount;
 
-	public LinkedIndex(LinkedArray a, int i){
+    /**
+     * Instantiates a new Linked index.
+     *
+     * @param a the a
+     * @param i the
+     */
+    public LinkedIndex(LinkedArray a, int i){
 		array = a;
 		index = i;
 		links = new int[1];
 		linkCount = 0;
 	}
 
-	public void linkTo(int i){
+    /**
+     * Link to.
+     *
+     * @param i the
+     */
+    public void linkTo(int i){
 		if( links.length == linkCount )
 			links = PApplet.expand(links);
 		links[linkCount++] = i;
 	}
 
-	public boolean linked(int i){
+    /**
+     * Linked boolean.
+     *
+     * @param i the
+     * @return the boolean
+     */
+    public boolean linked(int i){
 		for(int j=0; j<linkCount; j++)
 			if(links[j]==i)
 				return true;
 		return false;
 	}
 
-	public int[] getLinks(){
+    /**
+     * Get links int [ ].
+     *
+     * @return the int [ ]
+     */
+    public int[] getLinks(){
 		return links;
 	}
 

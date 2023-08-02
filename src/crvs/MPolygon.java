@@ -4,30 +4,68 @@ import java.util.Random;
 
 import processing.core.*;
 
+/**
+ * The type M polygon.
+ */
+@SuppressWarnings("unused")
 public class MPolygon {
 
-	float[][] coords;
-	int count;
-	
-	public MPolygon(){
+    /**
+     * The Coords.
+     */
+    float[][] coords;
+    /**
+     * The Count.
+     */
+    int count;
+
+    /**
+     * Instantiates a new M polygon.
+     */
+    public MPolygon(){
 		this(0);
 	}
 
-	public MPolygon(int points){
+    /**
+     * Instantiates a new M polygon.
+     *
+     * @param points the points
+     */
+    public MPolygon(int points){
 		coords = new float[points][2];
 		count = 0;
 	}
 
-	public void add(float x, float y){
+    /**
+     * Add.
+     *
+     * @param x the x
+     * @param y the y
+     */
+    public void add(float x, float y){
 		coords[count][0] = x;
 		coords[count++][1] = y;
 	}
 
-	public void draw(PApplet p){
+    /**
+     * Draw.
+     *
+     * @param p the p
+     */
+    public void draw(PApplet p){
 		draw(p.g);
 	}
 
-	public void draw(PGraphics g){
+    /**
+     * Draw.
+     *
+     * @param g    the g
+     * @param fill the fill
+     */
+    public void draw(PGraphics g, boolean fill) {
+		if (!fill) {
+			g.noFill();
+		}
 		g.beginShape();
 		for(int i=0; i<count; i++){
 			g.vertex(coords[i][0], coords[i][1]);
@@ -35,15 +73,50 @@ public class MPolygon {
 		g.endShape(PApplet.CLOSE);
 	}
 
-	public int count(){
+    /**
+     * Draw.
+     *
+     * @param g the g
+     */
+    public void draw(PGraphics g) {
+		this.draw(g, false);
+	}
+
+    /**
+     * Count int.
+     *
+     * @return the int
+     */
+    public int count(){
 		return count;
 	}
 
-	public float[][] getCoords(){
+    /**
+     * Get coords float [ ] [ ].
+     *
+     * @return the float [ ] [ ]
+     */
+    public float[][] getCoords() {
 		return coords;
 	}
-	
-	public boolean contains(float px, float py) {
+
+    /**
+     * Get vertices p vector [ ].
+     *
+     * @return the p vector [ ]
+     */
+    public PVector[] getVertices() {
+		return Utils.f2v(this.coords);
+	}
+
+    /**
+     * Contains boolean.
+     *
+     * @param px the px
+     * @param py the py
+     * @return the boolean
+     */
+    public boolean contains(float px, float py) {
 	    float[][] polygon = this.getCoords();
 	    boolean result = false;
 	    for (int i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -55,28 +128,79 @@ public class MPolygon {
 	    return result;
 	}
 
-	public float[][] getPointsWithin(int numPoints) {
+    /**
+     * Get web edgs edg [ ].
+     *
+     * @param resolution the resolution
+     * @return the edg [ ]
+     */
+    public Edg[] getWebEdgs(int resolution) {
+		PVector[] points = this.getVertices();
+		int size = points.length * (points.length - 1) / 2;
+		Edg[] edgs = new Edg[size];
+		int edgsIdx = 0;
+		for (int i = 0; i < points.length; i++) {
+			for (int j = 0; j < i; j++) {
+				Edg edg = new Edg(points[i], points[j], resolution);
+				edgs[edgsIdx] = edg;
+				edgsIdx++;
+			}
+		}
+		return edgs;
+	}
+
+    /**
+     * Get web points p vector [ ].
+     *
+     * @param resolution the resolution
+     * @return the p vector [ ]
+     */
+    public PVector[] getWebPoints(int resolution) {
+		Edg[] edgs = this.getWebEdgs(resolution);
+		PVector[] points = new PVector[edgs.length * resolution];
+		int pointsIdx = 0;
+		for (Edg edg : edgs) {
+			PVector[] edgPoints = edg.points();
+			for (PVector p : edgPoints) {
+				points[pointsIdx] = p;
+				pointsIdx++;
+			}
+		}
+		return points;
+	}
+
+    /**
+     * Get points within p vector [ ].
+     *
+     * @param numPoints the num points
+     * @return the p vector [ ]
+     */
+    public PVector[] getPointsWithin(int numPoints) {
 	    Random random = new Random();
-	    float[][] bbox = getBoundingBox();
-	    float[][] points = new float[numPoints][2];
+	    PVector[] bbox = getBoundingBox();
+	    PVector[] points = new PVector[numPoints];
 
 	    for (int i = 0; i < numPoints; i++) {
 	        float x, y;
 	        do {
-	            x = bbox[0][0] + (bbox[1][0] - bbox[0][0]) * random.nextFloat();
-	            y = bbox[0][1] + (bbox[1][1] - bbox[0][1]) * random.nextFloat();
+	            x = bbox[0].x + (bbox[1].x - bbox[0].x) * random.nextFloat();
+	            y = bbox[0].y + (bbox[1].y - bbox[0].y) * random.nextFloat();
 	        } while (!this.contains(x, y));
-	        points[i][0] = x;
-	        points[i][1] = y;
+	        PVector p = new PVector();
+	        p.x = x;
+	        p.y = y;
+	        points[i] = p;
 	    }
 
 	    return points;
 	}
 
-
-
-	
-	public float[][] getBoundingBox() {
+    /**
+     * Get bounding box p vector [ ].
+     *
+     * @return the p vector [ ]
+     */
+    public PVector[] getBoundingBox() {
 	    float[][] coords = this.getCoords();
 	    
 	    float minX = Float.MAX_VALUE;
@@ -84,39 +208,18 @@ public class MPolygon {
 	    float maxX = Float.MIN_VALUE;
 	    float maxY = Float.MIN_VALUE;
 
-	    for(int i = 0; i < coords.length; i++){
-	        float x = coords[i][0];
-	        float y = coords[i][1];
-	        
-	        if(x < minX) minX = x;
-	        if(y < minY) minY = y;
-	        if(x > maxX) maxX = x;
-	        if(y > maxY) maxY = y;
-	    }
-	    
-	    // Return as an array of points defining the corners of the bounding box
-	    return new float[][]{
-	        {minX, minY}, // bottom left corner
-	        {maxX, maxY}  // top right corner
+		for (float[] coord : coords) {
+			float x = coord[0];
+			float y = coord[1];
+
+			if (x < minX) minX = x;
+			if (y < minY) minY = y;
+			if (x > maxX) maxX = x;
+			if (y > maxY) maxY = y;
+		}
+	    return new PVector[] {
+	    		new PVector(minX, minY), // top right corner
+	    		new PVector(maxX, maxY) // bottom left corner
 	    };
 	}
-	
-	public PGraphics getBoundingWindow(PApplet parent) {
-	    float[][] bbox = this.getBoundingBox();
-
-	    // Calculate the width and height of the bounding box
-	    int width = Math.round(bbox[1][0] - bbox[0][0]);
-	    int height = Math.round(bbox[1][1] - bbox[0][1]);
-
-	    // Create a new PGraphics object
-	    PGraphics pg = parent.createGraphics(width, height);
-
-	    // Translate the coordinates so that the top left corner of the bounding box aligns with (0,0)
-	    pg.beginDraw();
-	    pg.translate(-bbox[0][0], -bbox[1][0]);
-
-	    // Return the PGraphics object
-	    return pg;
-	}
-
 }

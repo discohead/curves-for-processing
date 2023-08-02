@@ -1,5 +1,13 @@
 package crvs;
 
+/**
+ * The interface Edge drawer.
+ */
 public interface EdgeDrawer {
-	void draw(float[] edge);
+    /**
+     * Draw.
+     *
+     * @param edge the edge
+     */
+    void draw(float[] edge);
 }

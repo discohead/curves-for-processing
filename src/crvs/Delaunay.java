@@ -1,16 +1,38 @@
 package crvs;
 
+import processing.core.PVector;
 import quickhull3d.QuickHull3D;
 
+/**
+ * The type Delaunay.
+ */
 public class Delaunay {
 
-	float[][] edges;
-	LinkedArray mesh;
-	int[][] links;
-	int linkCount;
+    /**
+     * The Edges.
+     */
+    float[][] edges;
+    /**
+     * The Mesh.
+     */
+    LinkedArray mesh;
+    /**
+     * The Links.
+     */
+    int[][] links;
+    /**
+     * The Link count.
+     */
+    int linkCount;
 
-	public Delaunay( float[][] points ){
-
+    /**
+     * Instantiates a new Delaunay.
+     *
+     * @param vectors the vectors
+     */
+    public Delaunay( PVector[] vectors ){
+		float[][] points = Utils.v2f(vectors);
+		
 		if( points.length < 1 ){
 			edges = new float[0][4];
 			mesh = new LinkedArray(0);
@@ -76,20 +98,82 @@ public class Delaunay {
 
 	}
 
-	public float[][] getEdges(){
+    /**
+     * Get edges float [ ] [ ].
+     *
+     * @return the float [ ] [ ]
+     */
+    public float[][] getEdges(){
 		return edges;
 	}
 
-	public int[][] getLinks(){
+    /**
+     * Get edgs edg [ ].
+     *
+     * @param resolution the resolution
+     * @return the edg [ ]
+     */
+    public Edg[] getEdgs(int resolution) {
+		float[][] edges = this.getEdges();
+		Edg[] edgs = new Edg[edges.length];
+		for (int i = 0; i < edges.length; i++) {
+			edgs[i] = new Edg(edges[i], resolution);
+		}
+		return edgs;
+	}
+
+    /**
+     * Get links int [ ] [ ].
+     *
+     * @return the int [ ] [ ]
+     */
+    public int[][] getLinks(){
 		return links;
 	}
 
-	public int[] getLinked( int i ){
+    /**
+     * Get linked int [ ].
+     *
+     * @param i the
+     * @return the int [ ]
+     */
+    public int[] getLinked( int i ){
 		return mesh.get(i).links;
 	}
 
-	public int edgeCount(){
+    /**
+     * Edge count int.
+     *
+     * @return the int
+     */
+    public int edgeCount(){
 		return linkCount;
+	}
+
+    /**
+     * Get weights int [ ].
+     *
+     * @return the int [ ]
+     */
+    public int[] getWeights() {
+		int nodeCount = this.mesh.array.length;
+		int[] weights = new int[nodeCount];
+		for (int i = 0; i < nodeCount; i++) {
+			int[] links = this.getLinked(i);
+			weights[i] = links.length;
+		}
+		return weights;
+	}
+
+    /**
+     * Gets weight.
+     *
+     * @param i the
+     * @return the weight
+     */
+    public int getWeight( int i) {
+		int[] links = this.getLinked(i);
+		return links.length;
 	}
 
 }

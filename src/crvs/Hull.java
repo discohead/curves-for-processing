@@ -2,12 +2,26 @@ package crvs;
 
 import quickhull3d.QuickHull3D;
 
+/**
+ * The type Hull.
+ */
 public class Hull {
-	
-	int[] extrema;
-	MPolygon region;
 
-	public Hull( float[][] points ){
+    /**
+     * The Extrema.
+     */
+    int[] extrema;
+    /**
+     * The Region.
+     */
+    MPolygon region;
+
+    /**
+     * Instantiates a new Hull.
+     *
+     * @param points the points
+     */
+    public Hull( float[][] points ){
 		
 		if( points.length < 3 ){
 			extrema = new int[points.length];
@@ -60,12 +74,22 @@ public class Hull {
 		}
 		
 	}
-	
-	public int[] getExtrema(){
+
+    /**
+     * Get extrema int [ ].
+     *
+     * @return the int [ ]
+     */
+    public int[] getExtrema(){
 		return extrema;
 	}
-	
-	public MPolygon getRegion(){
+
+    /**
+     * Get region m polygon.
+     *
+     * @return the m polygon
+     */
+    public MPolygon getRegion(){
 		return region;
 	}
 
