@@ -184,11 +184,12 @@ public class Utils {
 		int widthPad = (int) (width * widthInsetPercent);
 		int heightPad = (int) (height * heightInsetPercent);
 
-		int insetWidth = width - widthPad;
-		int insetHeight = height - heightPad;
 		int insetX = x + widthPad/2;
 		int insetY = y + heightPad/2;
-		return new Window(insetWidth, insetHeight, insetX, insetY);
+		int insetWidth = width - widthPad;
+		int insetHeight = height - heightPad;
+
+		return new Window(insetX, insetY, insetWidth, insetHeight);
 	}
 
 }

@@ -10,6 +10,11 @@ import java.util.Objects;
 public class Window {
 
     /**
+     * The origin point of this window
+     */
+    public PVector origin;
+
+    /**
      * The Width.
      */
     public int width;
@@ -18,11 +23,6 @@ public class Window {
      * The Height.
      */
     public int height;
-
-    /**
-     * The origin point of this window
-     */
-    public PVector origin;
 
     /**
      * The current translation of the window from its origin.
@@ -42,14 +42,14 @@ public class Window {
     /**
      * Instantiates a new Window.
      *
+     * @param origin      the origin
      * @param width       the width
      * @param height      the height
-     * @param origin      the origin
      * @param translation the translation
      * @param scale       the scale
      * @param rotation    the rotation
      */
-    public Window(int width, int height, PVector origin, PVector translation, PVector scale, float rotation) {
+    public Window(PVector origin, int width, int height, PVector translation, PVector scale, float rotation) {
         this.origin = Objects.requireNonNullElseGet(origin, PVector::new);
         this.translation = Objects.requireNonNullElseGet(translation, PVector::new);
         this.scale = Objects.requireNonNullElseGet(scale, () -> new PVector(1, 1));
@@ -60,25 +60,34 @@ public class Window {
 
     /**
      * Instantiates a new Window.
-     *
-     * @param width  the width
-     * @param height the height
      * @param x      the x
      * @param y      the y
+     * @param width  the width
+     * @param height the height
      */
-    public Window(int width, int height, int x, int y) {
-        this(width, height, new PVector(x, y), null, null, 0);
+    public Window(int x, int y, int width, int height) {
+        this(new PVector(x, y), width, height, null, null, 0);
     }
 
     /**
      * Instantiates a new Window.
-     *
+     * @param origin the origin
      * @param width  the width
      * @param height the height
-     * @param origin the origin
+     * @param translation the translation
      */
-    public Window(int width, int height, PVector origin) {
-        this(width, height, origin, null, null, 0);
+    public Window(PVector origin, int width, int height, PVector translation) {
+        this(origin, width, height, translation, null, 0);
+    }
+
+    /**
+     * Instantiates a new Window.
+     * @param origin the origin
+     * @param width  the width
+     * @param height the height
+     */
+    public Window(PVector origin, int width, int height) {
+        this(origin, width, height,  null, null, 0);
     }
 
     /**
@@ -88,17 +97,17 @@ public class Window {
      * @param height the height
      */
     public Window(int width, int height) {
-        this(width, height, null, null, null, 0);
+        this(null, width, height, null, null, 0);
     }
 
     /**
      * Instantiates a new Window.
      *
-     * @param size   the size
      * @param origin the origin
+     * @param size   the size
      */
-    public Window(int size, PVector origin) {
-        this(size, size, origin, null, null, 0);
+    public Window(PVector origin, int size) {
+        this(origin, size, size, null, null, 0);
     }
 
     /**
@@ -107,7 +116,7 @@ public class Window {
      * @param size the size
      */
     public Window(int size) {
-        this(size, size, null, null,  null, 0);
+        this(null, size, size, null,  null, 0);
     }
 
     /**

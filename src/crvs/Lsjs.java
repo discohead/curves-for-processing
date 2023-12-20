@@ -80,7 +80,7 @@ public class Lsjs extends Crv {
 		}
 		value = this.bipolarize(value);
 		value = this.ampBias(value, pos);
-		return this.rectify(value);
+		return value;
 	}
 
 	/**

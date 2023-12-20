@@ -382,13 +382,16 @@ public class Crv implements FloatOp {
 	 * @return The transformed value.
 	 */
 	protected float ampBias(float value, float pos) {
+		float ampFactor = this.ampOffset;
 		if (this.amp != null) {
-			value *= this.amp.yAt(pos);
+			ampFactor *= this.amp.yAt(pos);
 		}
+		ampFactor = ampFactor/2f;
+		value = value * ampFactor + ampFactor;
 		if (this.bias != null) {
 			value += this.bias.yAt(pos);
 		}
-		return value * this.ampOffset + this.biasOffset;
+		return value + this.biasOffset;
 	}
 
 	/**
@@ -447,7 +450,7 @@ public class Crv implements FloatOp {
 		float value = this.calculate(modPos);
 		value = this.bipolarize(value);
 		value = this.ampBias(value, modPos);
-		return this.rectify(value);
+		return value;
 	}
 
 	/**
